@@ -11,33 +11,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout TouchLooper
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential git curl fakeroot rsync \
-            libarchive-tools libtinfo6 libncurses6
-
       - name: Install Theos
-        run: |
-          git clone --recursive https://github.com/theos/theos.git $HOME/theos
-          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-
-      - name: Install iOS SDK
-        run: |
-          git clone --depth=1 https://github.com/theos/sdks.git $HOME/theos/sdks
+        uses: Randomblock1/theos-action@v1
+        with:
+          theos-dir: theos
+          theos-src: https://github.com/theos/theos
+          theos-sdks: https://github.com/theos/sdks
+          theos-sdks-branch: master
 
       - name: Build TouchLooper
         run: |
-          export THEOS=$HOME/theos
+          export THEOS=$GITHUB_WORKSPACE/theos
           make clean
           make package FINALPACKAGE=1
 
-      - name: Find package
+      - name: Show generated DEBs
         run: |
-          echo "Generated packages:"
           find . -type f -name "*.deb" -print
 
       - name: Upload DEB
