@@ -14,22 +14,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Theos
-        uses: Randomblock1/theos-action@v1
-        with:
-          theos-dir: theos
-          theos-src: https://github.com/theos/theos
-          theos-sdks: https://github.com/theos/sdks
-          theos-sdks-branch: master
+      - name: Setup Theos
+        uses: beerpiss/theos-action@v1
 
       - name: Build TouchLooper
         run: |
-          export THEOS=$GITHUB_WORKSPACE/theos
           make clean
-          make package FINALPACKAGE=1
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
 
-      - name: Show generated DEBs
+      - name: Find DEB
         run: |
+          echo "Generated packages:"
           find . -type f -name "*.deb" -print
 
       - name: Upload DEB
