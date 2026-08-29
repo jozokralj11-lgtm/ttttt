@@ -1,0 +1,9 @@
+Package: com.touchlooper.tweak
+Name: TouchLooper
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: System-wide touch macro recorder and replay controller for jailbroken iOS 15/16. Uses ZXTouch as the playback transport.
+Maintainer: TouchLooper
+Author: TouchLooper
+Section: Tweaks
+Depends: firmware (>= 15.0), python3
