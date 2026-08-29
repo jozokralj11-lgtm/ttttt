@@ -1,0 +1,92 @@
+#!/var/jb/usr/bin/python3
+import json
+import os
+import sys
+import time
+
+STOP = "/var/mobile/Library/TouchLooper/stop.flag"
+
+def die(msg):
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+try:
+    from zxtouch.client import zxtouch
+    from zxtouch.touchtypes import TOUCH_DOWN, TOUCH_MOVE, TOUCH_UP
+except Exception as e:
+    die("ZXTouch Python module is missing: %s" % e)
+
+def load_events(path):
+    events = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                e = json.loads(line)
+                if e.get("phase") in ("down", "move", "up"):
+                    events.append(e)
+            except Exception:
+                pass
+    events.sort(key=lambda x: float(x.get("t", 0)))
+    return events
+
+def should_stop():
+    return os.path.exists(STOP)
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] != "play":
+        die("usage: touchlooper-helper play <macro.jsonl> <repeat> <speed> <interval>")
+    if len(sys.argv) < 6:
+        die("missing arguments")
+
+    path = sys.argv[2]
+    repeat = max(1, int(sys.argv[3]))
+    speed = min(10.0, max(0.1, float(sys.argv[4])))
+    interval = max(0.0, float(sys.argv[5]))
+
+    events = load_events(path)
+    if not events:
+        die("macro is empty")
+
+    if os.path.exists(STOP):
+        os.unlink(STOP)
+
+    dev = zxtouch("127.0.0.1")
+    ok, screen = dev.get_screen_size()
+    if not ok:
+        die("could not query screen size: %s" % screen)
+    width = float(screen["width"])
+    height = float(screen["height"])
+
+    phase_map = {"down": TOUCH_DOWN, "move": TOUCH_MOVE, "up": TOUCH_UP}
+
+    for loop in range(repeat):
+        if should_stop():
+            break
+        previous_t = 0.0
+        for e in events:
+            if should_stop():
+                break
+            current_t = float(e.get("t", 0.0))
+            delay = max(0.0, current_t - previous_t) / speed
+            if delay:
+                time.sleep(delay)
+            previous_t = current_t
+
+            x = max(0.0, min(width - 1.0, float(e.get("nx", 0.0)) * width))
+            y = max(0.0, min(height - 1.0, float(e.get("ny", 0.0)) * height))
+            finger = max(1, min(19, int(e.get("finger", 1))))
+            dev.touch(phase_map[e["phase"]], finger, x, y)
+
+        if loop + 1 < repeat and not should_stop() and interval:
+            time.sleep(interval)
+
+    try:
+        dev.disconnect()
+    except Exception:
+        pass
+
+if __name__ == "__main__":
+    main()
