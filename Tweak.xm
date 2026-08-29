@@ -74,7 +74,18 @@ static NSInteger TLFingerForTouch(UITouch *touch, BOOL create) {
                 }
                 if (!phase) continue;
 
-                UIWindow *window = touch.window ?: self.keyWindow;
+                UIWindow *window = touch.window;
+if (!window) {
+    for (UIScene *scene in self.connectedScenes) {
+        if (scene.activationState == UISceneActivationStateForegroundActive &&
+            [scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            window = windowScene.windows.firstObject;
+            if (window) break;
+        }
+    }
+}
+if (!window) return;
                 CGPoint p = [touch locationInView:window];
                 CGSize size = window.bounds.size;
                 CGFloat nx = size.width > 0 ? p.x / size.width : 0;
@@ -232,7 +243,7 @@ static NSInteger TLFingerForTouch(UITouch *touch, BOOL create) {
     }
     NSMutableArray *all = [NSMutableArray arrayWithObject:helper];
     [all addObjectsFromArray:args];
-    char **argv = calloc(all.count + 1, sizeof(char *));
+    char **argv = (char **)calloc(all.count + 1, sizeof(char *));
     for (NSUInteger i=0; i<all.count; i++) argv[i] = strdup([all[i] UTF8String]);
     pid_t pid = 0;
     int result = posix_spawn(&pid, helper.fileSystemRepresentation, NULL, NULL, argv, environ);
