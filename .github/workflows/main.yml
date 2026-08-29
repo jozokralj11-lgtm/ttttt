@@ -10,22 +10,45 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      THEOS: /home/runner/theos
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Theos
-        uses: beerpiss/theos-action@v1
+      - name: Install basic dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bash curl sudo git \
+            build-essential fakeroot rsync \
+            perl zip libxml2 libtinfo6
+
+      - name: Install Theos officially
+        run: |
+          export CI=1
+          export THEOS=/home/runner/theos
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+
+      - name: Verify Theos
+        run: |
+          echo "THEOS=$THEOS"
+          ls -la "$THEOS"
+          ls -la "$THEOS/toolchain/linux/iphone/bin"
+          ls -la "$THEOS/sdks"
+          "$THEOS/toolchain/linux/iphone/bin/clang" --version
 
       - name: Build TouchLooper
         run: |
+          export THEOS=/home/runner/theos
           make clean
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
 
-      - name: Find DEB
+      - name: Find generated DEB
         run: |
-          echo "Generated packages:"
-          find . -type f -name "*.deb" -print
+          echo "DEB files:"
+          find "$GITHUB_WORKSPACE" -type f -name "*.deb" -print
 
       - name: Upload DEB
         uses: actions/upload-artifact@v4
